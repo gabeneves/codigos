@@ -1,0 +1,24 @@
+1 - Implemente as classes do estudo de caso hospital (tarefa requisitada na disciplina) 
+
+2 - Adicione a biblioteca/driver JDBC MySQL no seu projeto
+
+3 - Instancie o servidor de banco de dados (Estou usando Docker)
+	docker run -d -p 3306:3306 --name mysql-docker-container -e MYSQL_ROOT_PASSWORD=sergey -e MYSQL_DATABASE=photo_app -e MYSQL_USER=sergey -e MYSQL_PASSWORD=sergey mysql/mysql-server:latest
+	sudo docker exec -it mysql-docker-container bash
+	mysql -u root -p
+	
+4 - Crie o database com o nome hospital
+	show databases;
+	create database hospital;
+	use hospital;
+
+5 - Forneça permissão para o usuário acessar o banco recém criado
+	GRANT ALL ON hospital.* TO sergey;
+	
+6 - Utilize os arquivos na pasta database/ para popular o banco de dados com dados fictícios
+	- MYSQL LOCAL: mysql -p -u [user] [database] < all_databases.sql
+	- DOCKER: Copie e cole o conteúdo de all_databases.sql no terminal mysql
+	
+
+7 - Implemente as classes DAO
+8 - Modifique o projeto e inclua Singleton
