@@ -1,0 +1,332 @@
+### UFMT - Ciencia da Computacao
+### Topicos Avancados de Engenharia de software
+### Professor Thiago Pereira Silva
+### Alunos: Gabriel Neves Silveira, Guilherme Queiroz Ribas
+
+
+# Versao do docker compose a ser usada
+version: "3.8"
+
+# servicos a serem criados
+services:
+
+  # Wirecloud
+  wirecloud:
+    image: quay.io/fiware/wirecloud:1.3.1 # Imagem a ser usada
+    container_name: fiware-wirecloud # Nome do container
+    hostname: wirecloud # Hostname dado ao wirecloud na network default 
+    ports:
+      - "8000:8000" # localhost:8000
+    networks:
+      default:
+        ipv4_address: 172.18.1.10 # Subnet para ip estatico
+
+    restart: always # Caso tenha um erro no container ele eh recriado
+    
+    # Depende dos seguintes containers serem iniciados antes dele
+    depends_on:
+      - keyrock
+      - memcached
+      - postgres-db
+
+    # Variaveis de ambiente  
+    environment:
+      - DEBUG=True # Mostra o debug no log
+      - DEFAULT_THEME=wirecloud.defaulttheme # Tema do Wirecloud
+      - DB_HOST=postgres-db # Host postgres
+      - DB_PASSWORD=wirepass   # Senha usada para o postgres
+      - FORWARDED_ALLOW_IPS=* # Passa uma lista de proxies reversos confiaveis
+      - MEMCACHED_LOCATION=memcached:11211
+      - FIWARE_IDM_PUBLIC_URL=http://localhost:3005 # URL que o wirecloud redireciona para o keyrock
+      - FIWARE_IDM_SERVER=http://172.18.1.5:3005 
+      - SOCIAL_AUTH_FIWARE_KEY=wirecloud-dckr-site-0000-00000000000 # Senha para autenticacao
+      - SOCIAL_AUTH_FIWARE_SECRET=wirecloud-docker-000000-clientsecret # Senha utilizada para o docker secret (senha que nao eh transmitida pela rede, armazenada no computador localmente)
+    
+    # Criacao de volumes
+    volumes:
+      - wirecloud-data:/opt/wirecloud_instance/data
+      - wirecloud-static:/var/www/static
+  
+
+  # Keyrock (IDM) - Responsavel pela gestao de identidades (login)
+  keyrock:
+    image: quay.io/fiware/idm:8.3.3-distroless # Imagem do keyrock (idm)
+    container_name: fiware-keyrock # Nome do container
+    hostname: keyrock # Hostname do container na network default
+    networks:
+      default:
+        ipv4_address: 172.18.1.5 # Subnete para usar ip estatico
+    
+    # Depende o mysql ter sido iniciado para iniciar
+    depends_on:
+      - mysql-db
+    ports:
+      - "3005:3005" # localhost:3005
+
+    environment:
+      - DEBUG=idm:*
+      - IDM_DB_HOST=mysql-db # Defoinicao do host do banco de dados do idm (mysql)
+      - IDM_DB_PASS_FILE=/run/secrets/my_secret_data # Definicao do local onde a senha secreta fica armazenada localmente (senha que nao eh transmitida pela rede, armazenada no computador)
+      - IDM_DB_USER=root # Definicao que o banco de dados do usuario fica na raiz
+      - IDM_HOST=http://localhost:3005 # Definicao de url do IDM
+      - IDM_PORT=3005 # Porta utilizada pelo IDM
+      - IDM_ADMIN_USER=gabriel # Nome de usuario do Admin
+      - IDM_ADMIN_EMAIL=gabriel@ufmt.com # Email do Admin
+      - IDM_ADMIN_PASS=123 # Senha do Admin
+    
+    # Uso do secrets, sendo uma senha que fica armazenada localmente no pc, nao sendo transmitida pela rede
+    secrets:
+      - my_secret_data
+
+    # Verifica a saude do container a cada 5 segundos  
+    healthcheck:
+      interval: 5s
+
+  # Context Broker Orion
+  orion:
+    image: quay.io/fiware/orion:3.8.1 # Definicao da imagem
+    container_name: fiware-orion # Nome do container
+    
+    # Depende do mongo db estar inicializado para ser iniciado
+    depends_on:
+      - mongo-db
+    
+    # Utiliza a network personalizada default
+    networks:
+      - default
+
+    # Escuta e utiliza a porta 1026   
+    expose:
+      - "1026"
+    ports:
+      - "1026:1026" # localhost:1026
+
+    # comandos para o host do banco de dados, nivel das mensagens de log e não ter cache  
+    command: -dbhost mongo-db -logLevel DEBUG -noCache
+    
+    # Verifica a saude a cada 5 segundos
+    healthcheck:
+      test: curl --fail -s http://orion:1026/version || exit 1
+      interval: 5s
+
+
+  # Iot agent ultralight
+  iot-agent:
+    image: quay.io/fiware/iotagent-ul:2.0.0-distroless # Definicao da imagem
+    hostname: iot-agent # Nome do container dentro da network default
+    container_name: fiware-iot-agent # Nome do container
+    
+    # Depende do mongo db e orion serem inicializados para iniciar
+    depends_on:
+      - mongo-db
+      - orion
+
+    # Utilizacao da network default  
+    networks:
+      - default
+
+    # Utiliza a porta 4041 para comunicacao southbound (orion ateh iot) e 7896 para comunicacao northbound (iot ateh orion)  
+    ports:
+      - "4041:4041" # localhost:4041
+      - "7896:7896" # localhost:7896
+    environment:
+      - IOTA_CB_HOST=orion # Definicao do context broker em que serah enviado os dados dos dispositivos iot
+      - IOTA_CB_PORT=1026 # Porta utilizada para enviar dados para o Orion
+      - IOTA_NORTH_PORT=4041 # Porta para comunicacao southbound (orion ateh iot)
+      - IOTA_REGISTRY_TYPE=mongodb # Guarda os dados dos Iot no banco de dados mongodb
+      - IOTA_LOG_LEVEL=DEBUG # Definicao de nivel de log do iot agent
+      - IOTA_TIMESTAMP=false # Desabilita o horario de cada dado que eh enviado
+      - IOTA_CB_NGSI_VERSION=v2 # Utiliza o NGSI v2 (do orion) para dar updates nos atributos
+      - IOTA_AUTOCAST=true # Garante que os numeros sejam lidos como numeros em vez de strings
+      - IOTA_MONGO_HOST=mongo-db # Defnicicao do nome host (mongodb)
+      - IOTA_MONGO_PORT=27017 # Porta do mongodb
+      - IOTA_MONGO_DB=iotagentul # nome a ser guardado no mongodb
+      - IOTA_HTTP_PORT=7896 # porta utilizada para trafego northbound (iot ateh orion)
+      - IOTA_PROVIDER_URL=http://iot-agent:4041 # Definicao da url que o iot agent receberah comandos
+    
+    # Checa a saude do container a cada 5 segundos
+    healthcheck:
+      interval: 5s
+
+  # Dispositivo iot 1
+  dummy-device-1: # Provedor de contexto, criado em flask
+    build: ./dummy-devices/dummy-1 # Constroe a imagem a partir de uma pasta local chamada dummy-device-1
+    hostname: dummy-device-1 # Definicao de hostname para encontar o container na network (default)
+    container_name: dummy-device-1 # Nome do container
+    depends_on: # Definicao de que o dummy device 1 depende do orion para funcionamento
+      - orion
+    volumes: # Utilizacao de volume local
+      - ./dummy-devices/dummy-1:/code
+    expose: # Porta em que o dummy device irah escutar
+      - "8070"
+    ports: # Definicao de porta do dummy device
+      - "8070:8070"
+    networks: # Network a ser utilizada pelo dummy device (default)
+      - default
+    
+  # Dispositivo Iot 2
+  dummy-device-2: # Provedor de contexto, criado em flask
+    build: ./dummy-devices/dummy-2 # Controes a imagem a partir de uma pasta local chamada dummy-device-2
+    hostname: dummy-device-2 # Definicao de hostname para encontar o container na network (default)
+    container_name: dummy-device-2 # Nome do container
+    depends_on: # Definicao de que o dummy device depende do orion para funcionamento
+      - orion
+    volumes: # Utilizacao de volume local
+      - ./dummy-devices/dummy-2:/code
+    expose: # Porta em que o dummy device irah escutar
+      - "8080"
+    ports: # Definicao de porta do dummy device
+      - "8080:8080"
+    networks: # Network a ser utilizada pelo dummy device (default)
+      - default
+
+  # Dispositivo Iot 3
+  dummy-device-3: # Provedor de contexto, criado em flask
+    build: ./dummy-devices/dummy-3 # Controes a imagem a partir de uma pasta local chamada dummy-device-3
+    hostname: dummy-device-3 # Definicao de hostname para encontar o container na network (default)
+    container_name: dummy-device-3 # Nome do container
+    depends_on: # Definicao de que o dummy device depende do orion para funcionamento
+      - orion
+    volumes: # Utilizacao de volume local
+      - ./dummy-devices/dummy-3:/code
+    expose: # Porta em que o dummy device irah escutar
+      - "8090"
+    ports: # Definicao de porta do dummy device
+      - "8090:8090"
+    networks: # Network a ser utilizada pelo dummy device (default)
+      - default
+
+  # Databases
+
+  # Postgres (Banco de dados utilizado pelo wirecloud para manter a sua aplicacao web (mashup) em pé)
+  postgres-db:
+    image: postgres # Nome da imagem
+    hostname: postgres-db # Nome do container na network default
+    container_name: db-postgres # Nome do container
+    restart: always # Caso haja um problema, ele reinicia sempre
+    
+    # Utiliza a porta 5432
+    ports:
+      - "5432:5432"
+
+    # Definicao de ip estatico utilizado subrede  
+    networks:
+      default:
+        ipv4_address: 172.18.1.13
+    environment:
+      - POSTGRES_PASSWORD=wirepass   # Senha do postgres
+    volumes: # Definicao de volume
+      - postgres-db:/var/lib/postgresql/data
+
+
+  # Mysql
+  mysql-db:
+    restart: always # Caso haja um problema ele sempre reinicia
+    image: mysql:8.0 # Nome da imagem
+    hostname: mysql-db # Nome do container dentro da network default
+    container_name: db-mysql # Nome do container
+    
+    # Escuta e utiliza a porta 3306
+    expose:
+      - "3306"
+    ports:
+      - "3306:3306" # localhost:3306
+    
+    # Utilizacao de subrede para ip estatico
+    networks:
+      default:
+        ipv4_address: 172.18.1.6    
+    environment:
+      - "MYSQL_ROOT_PASSWORD_FILE=/run/secrets/my_secret_data" # Lugar onde estah armazenado a senha secreta (Senha que eh armazenada localmente no pc)
+      - "MYSQL_ROOT_HOST=172.18.1.5" # Permite o Keyrock (idm) acessar o banco de dados
+    volumes: # Definicao de volume
+      - mysql-db:/var/lib/mysql
+      - ./mysql-data:/docker-entrypoint-initdb.d/:ro # Pre carrega os usuarios do Keyrock (idm)
+    secrets: # Utilizacao de secret
+      - my_secret_data
+
+  # Mongodb
+  mongo-db:
+    image: mongo:4.4 # Nome da imagem
+    hostname: mongo-db # Nome do container dentro da network default
+    container_name: db-mongo # Nome do container
+    
+    # Utiliza a porta 27017
+    ports: 
+    - "27017:27017" # localhost:27017
+    networks: # Utilizacao de network default
+      default: ~
+  
+    volumes: # Definicao de volume
+    - mongo-db:/data
+
+    # Testa a saude do container a cada 5 segundos
+    healthcheck:
+      test: |
+        host=`hostname --ip-address || echo '127.0.0.1'`; 
+        mongo --quiet $host/test --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)' && echo 0 || echo 1
+      interval: 5s
+
+
+  # Outros servicos
+
+  # Ngsi proxy (Consegue redirecionar notificacoes do orion para paginas web)
+  ngsi-proxy:
+    image: quay.io/fiware/ngsiproxy:1.2.0 # Imagem
+    hostname: ngsi-proxy # Nome do container dentro da network default
+    container_name: wc-ngsi-proxy # nome do container
+
+    # Utilizacao de subrede para ip estatico
+    networks:
+      default:
+        ipv4_address: 172.18.1.14
+    
+    # Escuta e utiliza a porta 8100
+    expose:
+      - "8100"
+    ports:
+      - "8100:8100"
+
+    # Variaveis de ambiente  
+    environment:
+      - PORT=8100
+      - TRUST_PROXY_HEADERS=0
+
+  # memcached (Gerencia o cache do wirecloud)
+  memcached:
+    image: memcached:1 # Imagem
+    container_name: wc-memcached # Nome do container
+    hostname: memcached # Nome do container dentro da network default
+    
+    # Utiliza a porta 11211
+    ports:
+      - "11211:11211"
+
+    # Utilizacao de subrede para ip estatico  
+    networks:
+      default:
+        ipv4_address: 172.18.1.11
+
+    restart: always # Caso haja algum problema eh reiniciado
+    command: memcached -m 2048m
+
+
+# Definicao de network default e subrede
+networks:
+  default:
+    ipam:
+      config:
+      - subnet: 172.18.1.0/24
+
+# Volumes
+volumes:
+  mysql-db: ~
+  postgres-db: ~
+  wirecloud-static: ~
+  wirecloud-data: ~
+  mongo-db: ~
+
+# Definicao do secret, sendo uma senha que pode ser usada pelos containers e fica armazenada localmente no pc
+secrets:
+  my_secret_data:
+    file: ./secrets.txt

@@ -1,0 +1,226 @@
+{
+	"info": {
+		"_postman_id": "f3b85d6d-3c2c-43b1-91fc-392bbc496847",
+		"name": "Exemplos Engenharia (trabalho)",
+		"description": "Esse é um conjunto de requisições utilizadas em um exemplo de comunicação entre containers e usuários externos com o docker compose",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "26156159"
+	},
+	"item": [
+		{
+			"name": "Topicos Avancados",
+			"item": [
+				{
+					"name": "Importando data",
+					"item": [
+						{
+							"name": "Criando os restaurantes/lanchonetes",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"actionType\": \"APPEND\",\n    \"entities\": [\n        {\n            \"id\": \"urn:ngsi-ld:Restaurante:001\",\n            \"type\": \"Restaurante\",\n            \"address\":{\n                \"type\":\"PostalAddress\",\n                \"value\":{\n                    \"streetAddress\":\"Av. Valdon Varjão\",\n                    \"addressRegion\":\"Barra do Garcas\", \n                    \"addressLocality\":\" Barra do Garcas\", \n                    \"postalCode\":\"78600-000\"}\n            },\n            \"location\": {\n                \"type\":\"geo:json\",\n                \"value\": {\n                    \"type\":\"Point\",\n                    \"coordinates\":[-52.313254,-15.876424]\n                    }\n            },\n            \"name\":{\n                \"type\":\"Text\",\n                \"value\":\"Tia do Lanche\"\n                }\n        },\n        {\n            \"id\":\"urn:ngsi-ld:Restaurante:002\",\n            \"type\":\"Restaurante\",\n            \"address\": {\n                \"type\":\"PostalAddress\",\n                \"value\":{\n                    \"streetAddress\":\"Av. Valdon Varjão\",\n                    \"addressRegion\":\"Barra do Garcas\",\n                    \"addressLocality\":\"Barra do Garcas\",\n                    \"postalCode\":\"78600-000\"\n                    }\n            },\n            \"location\": {\n                \"type\":\"geo:json\",\n                \"value\":{\n                    \"type\":\"Point\",\n                    \"coordinates\":[-52.31353,-15.87655]\n                }\n            },\n            \"name\":{\n                \"type\":\"Text\",\n                \"value\":\"Tia do Acai\"\n                }\n        },\n        {\n            \"id\":\"urn:ngsi-ld:Restaurante:003\",\n            \"type\":\"Restaurante\",\n            \"address\":{\n                \"type\":\"PostalAddress\",\n                \"value\":{\n                    \"streetAddress\":\"Av. Valdon Varjão\",\n                    \"addressRegion\":\"Barra do Garcas\",\n                    \"addressLocality\":\"Barra do Garcas\",\n                    \"postalCode\":\"78600-000\"\n                    }\n            },\n            \"location\":{\n                \"type\":\"geo:json\",\n                \"value\":{\n                    \"type\":\"Point\",\n                    \"coordinates\":[-52.311353,-15.874474]\n                }\n            },\n            \"name\":{\n                \"type\":\"Text\",\n                \"value\":\"Restaurante Universitario - RU\"\n            }\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "http://localhost:1026/v2/op/update",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "1026",
+									"path": [
+										"v2",
+										"op",
+										"update"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verificar Restaurantes",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "http://localhost:1026/v2/entities",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "1026",
+									"path": [
+										"v2",
+										"entities"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Provisionando Dispositivos IOT",
+					"item": [
+						{
+							"name": "Criando Servico",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "fiware-service",
+										"value": "openiot",
+										"type": "text"
+									},
+									{
+										"key": "fiware-servicepath",
+										"value": "/",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"services\": [\n        {\n            \"apikey\": \"4jggokgpepnvsb2uv4s40d59ov\",\n            \"cbroker\": \"http://orion:1026\",\n            \"entity_type\": \"Sensor\",\n            \"resource\": \"/iot/d\"\n        }\n    ]\n}"
+								},
+								"url": {
+									"raw": "http://localhost:4041/iot/services",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4041",
+									"path": [
+										"iot",
+										"services"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Provisionar um dispositivos",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "fiware-service",
+										"value": "openiot",
+										"type": "text"
+									},
+									{
+										"key": "fiware-servicepath",
+										"value": "/",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"devices\": [\r\n        {\r\n            \"device_id\": \"sensor001\",\r\n            \"entity_name\": \"urn:ngsi-ld:Sensor:001\",\r\n            \"entity_type\": \"Sensor\",\r\n            \"transport\": \"HTTP\",\r\n            \"endpoint\": \"http://dummy-device:8070/dht22\",\r\n            \"attributes\": [\r\n                {\r\n                    \"object_id\": \"quantidade\",\r\n                    \"name\": \"quantidade\",\r\n                    \"type\": \"Number\"\r\n                },\r\n                {\r\n                    \"object_id\": \"horario\",\r\n                    \"name\": \"horario\",\r\n                    \"type\": \"Number\"\r\n                }\r\n            ]\r\n        },\r\n        {\r\n            \"device_id\": \"sensor002\",\r\n            \"entity_name\": \"urn:ngsi-ld:Sensor:002\",\r\n            \"entity_type\": \"Sensor\",\r\n            \"transport\": \"HTTP\",\r\n            \"endpoint\": \"http://dummy-device:8080/dht22\",\r\n            \"attributes\": [\r\n                {\r\n                    \"object_id\": \"quantidade\",\r\n                    \"name\": \"quantidade\",\r\n                    \"type\": \"Number\"\r\n                },\r\n                {\r\n                    \"object_id\": \"horario\",\r\n                    \"name\": \"horario\",\r\n                    \"type\": \"Number\"\r\n                }\r\n            ]\r\n        },\r\n        {\r\n            \"device_id\": \"sensor003\",\r\n            \"entity_name\": \"urn:ngsi-ld:Sensor:003\",\r\n            \"entity_type\": \"Sensor\",\r\n            \"transport\": \"HTTP\",\r\n            \"endpoint\": \"http://dummy-device:8080/dht22\",\r\n            \"attributes\": [\r\n                {\r\n                    \"object_id\": \"quantidade\",\r\n                    \"name\": \"quantidade\",\r\n                    \"type\": \"Number\"\r\n                },\r\n                {\r\n                    \"object_id\": \"horario\",\r\n                    \"name\": \"horario\",\r\n                    \"type\": \"String\"\r\n                }\r\n            ]\r\n        }\r\n    ]\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "http://localhost:4041/iot/devices",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "4041",
+									"path": [
+										"iot",
+										"devices"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Obter dispositivos",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "fiware-service",
+										"value": "openiot",
+										"type": "text"
+									},
+									{
+										"key": "fiware-servicepath",
+										"value": "/",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "http://localhost:1026/v2/entities/",
+									"protocol": "http",
+									"host": [
+										"localhost"
+									],
+									"port": "1026",
+									"path": [
+										"v2",
+										"entities",
+										""
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "ultralight",
+			"value": "localhost:3001",
+			"type": "string"
+		},
+		{
+			"key": "iot-agent-southport",
+			"value": "localhost:7896",
+			"type": "string"
+		}
+	]
+}
