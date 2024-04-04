@@ -1,7 +1,7 @@
 ### UFMT - Ciencia da Computacao
 ### Topicos Avancados de Engenharia de software
 ### Professor Thiago Pereira Silva
-### Alunos: Gabriel Neves Silveira, Guilherme Queiroz Ribas
+### Aluno: Gabriel Neves Silveira
 ###
 ### Codigo fonte do dummy device sensor 2 da tia do acai
 
